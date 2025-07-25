@@ -1,0 +1,13 @@
+ignore:
+  - "script"
+  - "test"
+  - "src/common/Multicall3.sol"
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true

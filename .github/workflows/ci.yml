@@ -1,0 +1,130 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  lint:
+    strategy:
+      fail-fast: true
+
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Sol Fmt
+        run: forge fmt --check
+          
+      - uses: actions/setup-node@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          cache: yarn
+      - run: yarn install
+
+      - name: Validate JSON Schema
+        run: yarn lint:releases
+  
+  analyze:
+    name: Slither
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Slither
+        run: python3 -m pip install slither-analyzer==0.10.1
+
+      - name: Static analysis
+        run: slither .
+
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Forge Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - uses: actions/setup-node@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          cache: yarn
+      - run: yarn install
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        id: test
+
+  coverage:
+    name: Forge Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - uses: actions/setup-node@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          cache: yarn
+      - run: yarn install
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge coverage
+        run: forge coverage --report lcov
+
+      - name: Report Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./lcov.info

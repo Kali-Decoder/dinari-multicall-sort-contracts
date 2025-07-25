@@ -1,0 +1,33 @@
+{
+  "TransferRestrictor": {
+    "owner": "",
+    "upgrader": ""
+  },
+  "DShareFactory": {
+    "owner": "",
+    "upgrader": "",
+    "dShareBeacon": "",
+    "wrappedDShareBeacon": "",
+    "transferRestrictor": ""
+  },
+  "DividendDistribution": {
+    "owner": "",
+    "upgrader": ""
+  },
+  "OrderProcessor": {
+    "owner": "",
+    "upgrader": "",
+    "treasury": "",
+
+    "vault": "",
+    "transferRestrictor": ""
+  },
+  "FulfillmentRouter": {
+    "owner": "",
+    "upgrader": ""
+  },
+  "Vault": {
+    "owner": "",
+    "upgrader": ""
+  }
+}
