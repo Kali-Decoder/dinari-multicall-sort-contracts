@@ -44,6 +44,8 @@ async function createWeightedOrders(
     const rawAmount = (asset.weightage / totalWeight) * totalDepositAmount;
     const paymentTokenQuantity = rawAmount.toString();
     const formattedQuantity = ethers.utils.formatUnits(paymentTokenQuantity, 6);
+
+    console.log(` ${formattedQuantity} : paymentTokenQuantity : ${paymentTokenQuantity}`);
     const _order = {
       chain_id: 'eip155:11155111',
       order_side: 'BUY',
@@ -198,7 +200,7 @@ async function main() {
   // console.log(orderProcessor.functions,"functions")
   
   // ------------------ Configure Order ------------------
-  const totalDepositAmount = ethers.utils.parseUnits("100", 6);
+  const totalDepositAmount = ethers.utils.parseUnits("13", 6);
   console.log(`Total Deposit Amount: ${totalDepositAmount.toString()}`);
   const executedOrders = await createWeightedOrders(
     "019814c3-64d2-7611-a4b7-dcc7c068f6ea",
