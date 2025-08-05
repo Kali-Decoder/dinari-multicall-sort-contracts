@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const orderProcessorDataPath = path.resolve(__dirname, '../../lib/sbt-deployments/src/v0.4.0/order_processor.json');
+const orderProcessorDataPath = path.resolve(__dirname, '../../lib/sbt-deployments/src/v0.4.1/order_processor.json');
 
 const orderProcessorData = JSON.parse(fs.readFileSync(orderProcessorDataPath, 'utf8'));
 const orderProcessorAbi = orderProcessorData.abi;
@@ -21,9 +21,7 @@ async function main() {
     const RPC_URL = process.env.RPC_URL;
     if (!RPC_URL) throw new Error("empty rpc url");
 
-
-
-    let orderId = "19410877419889561591200141246510587184078920400177192464114909810463115030119";
+    let orderId = "111298464102270178154860985902243709334074425643450355012874302400186691812540";
     const provider = ethers.getDefaultProvider(RPC_URL);
     const signer = new ethers.Wallet(privateKey, provider);
     console.log(`Signer Address: ${signer.address}`);
@@ -35,12 +33,13 @@ async function main() {
         orderProcessorAbi,
         signer,
     );
-    const orderStatus = await orderProcessor.getOrderStatus(orderId);
-    if (orderStatus == 1) {
-        console.log(`- Order Pending : ${orderStatus}`);
-    } else {
-        console.log(`- Order Completed : ${orderStatus}`);
-    }
+    const orderStatus = await orderProcessor.getReceivedAmount(orderId);
+    console.log(orderStatus.toString());
+    // if (orderStatus == 1) {
+    //     console.log(`- Order Pending : ${orderStatus}`);
+    // } else {
+    //     console.log(`- Order Completed : ${orderStatus}`);
+    // }
 }
 
 

@@ -248,10 +248,6 @@ async function main() {
   multiCallBytes.push(selfPermitData);
 
 
-
-  // // createOrder call data
-  // // see IOrderProcessor.Order struct for order parameters
-
   if (executedOrders.orders.length > 0) {
 
     for (const order of executedOrders.orders) {
@@ -275,9 +271,9 @@ async function main() {
       ], order?.feeQuoteResponse.order_fee_contract_object.fee_quote_signature]);
 
       multiCallBytes.push(requestOrderData);
+      console.log(order?.feeQuoteResponse.order_fee_contract_object.fee_quote.orderId, "orderId");
     }
 
-    console.log(multiCallBytes, multiCallBytes.length, "length");
   } else {
     console.log("No orders");
   }
