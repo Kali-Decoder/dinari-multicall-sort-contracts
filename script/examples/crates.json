@@ -2,7 +2,7 @@
   {
     "share": "0xD771a71E5bb303da787b4ba2ce559e39dc6eD85c",
     "weightage": 40,
-    "usdtSpend": "10400000",
+    "usdtSpend": "26000000",
     "orderId": "110364476708637015291182252950187499599061266158518214198023664069374334234562",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
@@ -13,7 +13,7 @@
   {
     "share": "0x7B58f454c36Edc0FBDEDfA8E0D4392A1a4c0b96c",
     "weightage": 40,
-    "usdtSpend": "10400000",
+    "usdtSpend": "26000000",
     "orderId": "78980936872498968027409939875585838384184797047821660995723097873949625736092",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
@@ -24,7 +24,7 @@
   {
     "share": "0xdc2C5910d367f62F2F3234C9eaa5Afb12948Ef01",
     "weightage": 20,
-    "usdtSpend": "5200000",
+    "usdtSpend": "13000000",
     "orderId": "109656894713058975093259692432705506208256999394299923226811830665647663530078",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
