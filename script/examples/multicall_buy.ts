@@ -21,6 +21,13 @@ const assets = [
     weightage: 20,
   },
 ];
+
+const crates: {
+  share: string,
+  weightage: number,
+  usdtSpend: string
+}[] = [];
+
 async function createWeightedOrders(
   accountId: string,
   totalDepositAmount: number,
@@ -69,10 +76,17 @@ async function createWeightedOrders(
       tif: tif,
     };
 
-    const feeQuoteResponse = await dinariClient.v2.accounts.orders.stocks.eip155.getFeeQuote(accountId, _order);
+    const quote = await dinariClient.v2.marketData.stocks.retrieveCurrentQuote(_order.stock_id);
+    const askPrice = Number(quote.ask_price);
 
+    const feeQuoteResponse = await dinariClient.v2.accounts.orders.stocks.eip155.getFeeQuote(accountId, _order);
     const orderFee = BigInt(feeQuoteResponse.order_fee_contract_object.fee_quote.fee);
-    
+    const orderFeeReadable = Number(ethers.utils.formatUnits(orderFee, 6));
+    const paymentReadable = Number(ethers.utils.formatUnits(paymentTokenQuantity, 6));
+    console.log(orderFeeReadable,paymentReadable,"orderFeeReadable,paymentReadable")
+    const netSpend = paymentReadable - orderFeeReadable;
+    const minShares = netSpend / askPrice;
+    console.log(netSpend,minShares,"netSpend,minShares");
     totalOrderAmount += BigInt(paymentTokenQuantity);
     totalFees += orderFee;
 
@@ -81,6 +95,9 @@ async function createWeightedOrders(
       orderParams,
       feeQuoteResponse,
       orderFee,
+      minShares: minShares,
+      priceUsed: askPrice,
+      stockId: asset.stockId,
     });
   }
 
@@ -173,7 +190,7 @@ async function main() {
     environment: 'sandbox',
   });
 
-  console.log(dinariClient, "dinariClient")
+
 
   // setup provider and signer
   const provider = ethers.getDefaultProvider(RPC_URL);
@@ -290,22 +307,72 @@ async function main() {
 
   console.log(orderEvents, "order Events");
   if (orderEvents.length === 0) throw new Error("No OrderCreated events found");
-
-  for (const [index, orderEvent] of orderEvents.entries()) {
+  const _cratesPath = path.resolve(__dirname, "crates.json");
+  const _crates = JSON.parse(fs.readFileSync(_cratesPath, "utf8"));
+  for (let i = 0; i < executedOrders.orders.length; i++) {
+    const orderEvent = orderEvents[i];
+    const asset = assets[i];
+  
     const orderId = orderEvent.args[0];
     const orderAccount = orderEvent.args[1];
     const orderStatusCode = await orderProcessor.getOrderStatus(orderId);
-
+  
     // Map status code to label
     let orderStatusLabel = "Unknown";
-    if (orderStatusCode === 1) orderStatusLabel = "Pending";
-    else if (orderStatusCode === 2) orderStatusLabel = "Completed";
+    if (orderStatusCode === 0) orderStatusLabel = "Pending";
+    else if (orderStatusCode === 1) orderStatusLabel = "Completed";
+  
+    const existing = _crates.find(c => c.stockId === asset.stockId);
 
-    console.log(`Order ${index + 1}:`);
+
+    if (existing) {
+      existing.minShares = Number(existing.minShares) + Number(executedOrders.orders[i].minShares); 
+      existing.usdtSpend = (
+        BigInt(existing.usdtSpend) + 
+        BigInt(executedOrders.orders[i].orderParams.paymentTokenQuantity)
+      ).toString(); 
+    } else {
+      _crates.push({
+        share: asset.assetAddress,
+        weightage: asset.weightage,
+        usdtSpend: executedOrders.orders[i].orderParams.paymentTokenQuantity.toString(),
+        orderId: orderId.toString(),
+        orderAccount: orderAccount,
+        status: orderStatusLabel,
+        minShares: Number(executedOrders.orders[i].minShares),  // ✅ force number here
+        priceUsed: executedOrders.orders[i].priceUsed,
+        stockId : executedOrders.orders[i].stockId,
+      });
+    }
+    
+  
+    console.log(`Order ${i + 1}:`);
     console.log(`- Order ID: ${orderId}`);
     console.log(`- Order Account: ${orderAccount}`);
     console.log(`- Order Status: ${orderStatusLabel} (${orderStatusCode})`);
   }
+  
+
+  console.log("Final Crates:", _crates);
+  // const cratesPath = path.resolve(__dirname, "./crates.json");
+  fs.writeFileSync(_cratesPath, JSON.stringify(_crates, null, 2));
+  console.log(`Crates saved to: ${_cratesPath}`);
+
+  // for (const [index, orderEvent] of orderEvents.entries()) {
+  //   const orderId = orderEvent.args[0];
+  //   const orderAccount = orderEvent.args[1];
+  //   const orderStatusCode = await orderProcessor.getOrderStatus(orderId);
+
+  //   // Map status code to label
+  //   let orderStatusLabel = "Unknown";
+  //   if (orderStatusCode === 1) orderStatusLabel = "Pending";
+  //   else if (orderStatusCode === 2) orderStatusLabel = "Completed";
+
+  //   console.log(`Order ${index + 1}:`);
+  //   console.log(`- Order ID: ${orderId}`);
+  //   console.log(`- Order Account: ${orderAccount}`);
+  //   console.log(`- Order Status: ${orderStatusLabel} (${orderStatusCode})`);
+  // }
 
 
 }
