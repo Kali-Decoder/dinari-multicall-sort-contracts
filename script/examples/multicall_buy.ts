@@ -84,8 +84,13 @@ async function createWeightedOrders(
     const orderFeeReadable = Number(ethers.utils.formatUnits(orderFee, 6));
     const paymentReadable = Number(ethers.utils.formatUnits(paymentTokenQuantity, 6));
     console.log(orderFeeReadable,paymentReadable,"orderFeeReadable,paymentReadable")
-    const netSpend = paymentReadable - orderFeeReadable;
-    const minShares = netSpend / askPrice;
+    let netSpend = paymentReadable - orderFeeReadable;
+    let minShares = netSpend / askPrice;
+
+    // Ensure minShares does not go to Infinity or NaN
+    if (!isFinite(minShares) || isNaN(minShares)) {
+      minShares = 0;
+    }
     console.log(netSpend,minShares,"netSpend,minShares");
     totalOrderAmount += BigInt(paymentTokenQuantity);
     totalFees += orderFee;
