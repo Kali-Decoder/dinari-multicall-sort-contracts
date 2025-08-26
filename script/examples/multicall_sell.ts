@@ -4,7 +4,10 @@ import fs from 'fs';
 import path from 'path';
 import Dinari from '@dinari/api-sdk';
 import { fileURLToPath } from 'url';
-
+import axios from "axios";
+const BACKEND_BASE_URL = "https://use-crates.onrender.com/api/v1";
+const bodyObject = {};
+const executableOrders = [];
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const orderProcessorDataPath = path.resolve(__dirname, '../../lib/sbt-deployments/src/v0.4.0/order_processor.json');
@@ -19,7 +22,12 @@ const tokenAbi = [
     "function balanceOf(address account) external view returns (uint256)",
 ];
 
-const allSettledOrders = [];
+function getTokenAddress(chainId, tokens) {
+    const entry = tokens.find(token => token.split(":")[1] === String(chainId));
+    return entry ? entry.split(":")[2] : null;
+}
+
+
 
 const cratesPath = path.resolve(__dirname, "crates.json");
 const crates = JSON.parse(fs.readFileSync(cratesPath, "utf8"));
@@ -53,7 +61,7 @@ async function main() {
     const paymentTokenAddress = process.env.PAYMENTTOKEN;
     if (!paymentTokenAddress) throw new Error("empty payment token address");
 
-  
+
 
     const dinariClient = new Dinari({
         apiKeyID: process.env.DINARI_API_KEY,
@@ -71,21 +79,57 @@ async function main() {
 
     const orderProcessor = new ethers.Contract(orderProcessorAddress, orderProcessorAbi, signer);
 
+
+    const userData = await axios.get(`${BACKEND_BASE_URL}/user/${signer.address}`);
+  
+
+
+    bodyObject.type = "sell";
+    bodyObject.wallet = signer.address;
+    bodyObject.crateId = "68767c8ea5efff9dcb31f6a5";
+    bodyObject.chainId = chainId;
+    let crateInvestmentData;
+    if (userData.data.data.subscribedCrates && userData.data.data.subscribedCrates.length > 0) {
+        for (const crate of userData.data.data.subscribedCrates) {
+            if (bodyObject.crateId === crate.crateId) {
+                console.log("Subscribed crate found:", crate);
+                crateInvestmentData = crate.userInvestment;
+            }
+        }
+    } else {
+        console.log("No subscribed crates found for this user.");
+        return;
+    }
+
+    if (!crateInvestmentData) {
+        console.log("No investment data found for the specified crate.");
+        return;
+    }
+
+
     const multiCallBytes: string[] = [];
+    let totalUsdGoingToWithdraw = 0;
 
-    for (const crate of crates) {
-        console.log(`\n📦 Processing crate: ${crate.stockId}`);
+    for (const stock of crateInvestmentData.stockHoldings) {
+        const _stock = stock.stockId;
+        console.log(stock, "_stock");
+        console.log(`\n📦 Processing Stock: ${_stock.dinari_id}`);
 
-        const assetTokenAddress = crate.share;
+        const assetTokenAddress = getTokenAddress(chainId, _stock.tokens);
+        console.log(`Asset Token Address: ${assetTokenAddress}`);
+        if (!assetTokenAddress) {
+            console.log(`⚠️ Skipping Stock ${_stock.dinari_id} (No token for chainId ${chainId})`);
+            return;
+        }
         const assetToken = new ethers.Contract(assetTokenAddress, tokenAbi, signer);
-        const orderAmount = ethers.utils.parseUnits(crate.minShares.toString(), await assetToken.decimals());
+        const orderAmount = ethers.utils.parseUnits(stock.sharesOwned.toString(), await assetToken.decimals());
         console.log(`Order Amount: ${orderAmount}tokens`);
 
         const userBalance = await assetToken.balanceOf(await signer.getAddress());
         console.log(`User Balance: ${userBalance.toString()} tokens`);
 
         if (userBalance.lt(orderAmount)) {
-            console.log(`⏩ Skipping crate ${crate.stockId} (Not enough balance)`);
+            console.log(`⏩ Skipping Stock ${_stock.dinari_id} (Not enough balance)`);
             continue;
         }
 
@@ -129,7 +173,7 @@ async function main() {
             order_side: 'SELL',
             order_tif: 'DAY',
             order_type: 'MARKET',
-            stock_id: crate.stockId,
+            stock_id: _stock.dinari_id,
             payment_token: orderParams.paymentToken,
             asset_token_quantity: actualAmount.toString()
         };
@@ -199,10 +243,12 @@ async function main() {
 
         multiCallBytes.push(requestOrderData);
 
-        allSettledOrders.push({
-            stockId: crate.stockId,
-            minShares: ethers.utils.formatUnits(orderAmount, await assetToken.decimals()),
+        executableOrders.push({
+            stock: _stock._id,
+            sharesOwned: ethers.utils.formatUnits(orderAmount, await assetToken.decimals()),
         });
+        totalUsdGoingToWithdraw+= ethers.utils.formatUnits(orderAmount, await assetToken.decimals())* _stock.price;
+
     }
 
     if (multiCallBytes.length === 0) {
@@ -214,25 +260,41 @@ async function main() {
     const tx = await orderProcessor.multicall(multiCallBytes);
     const receipt = await tx.wait();
     console.log(`✅ tx hash: ${tx.hash}`);
-    const _cratesPath = path.resolve(__dirname, "crates.json");
-    const _crates = JSON.parse(fs.readFileSync(_cratesPath, "utf8"));
-    
-    console.log("\nUpdating crates.json with new minShares values...",{allSettledOrders});
-    for (const order of allSettledOrders) {
-      const crate = _crates.find(c => c.stockId === order.stockId);
-      if (crate) {
-        // Subtract the minShares value (ensure it doesn't go negative)
-        crate.minShares = Math.max(
-          0,
-          (parseFloat(crate.minShares) || 0) - parseFloat(order.minShares)
-        );
-      }
+
+    bodyObject.transactionHash =tx.hash;
+    bodyObject.stockHoldings = executableOrders;
+    bodyObject.totalAmountInvested = totalUsdGoingToWithdraw;
+
+
+    const orderEvents = receipt.logs
+        .filter((log: any) => log.topics[0] === orderProcessor.interface.getEventTopic("OrderCreated"))
+        .map((log: any) => orderProcessor.interface.parseLog(log));
+
+    const orderIds = [];
+    if (orderEvents.length === 0) throw new Error("No OrderCreated events found");
+
+    for (let i = 0; i < executableOrders.length; i++) {
+        const orderEvent = orderEvents[i];
+        const orderId = orderEvent.args[0];
+        orderIds.push(orderId.toString());
+        const orderAccount = orderEvent.args[1];
+        const orderStatusCode = await orderProcessor.getOrderStatus(orderId);
+        let orderStatusLabel = "Unknown";
+        if (orderStatusCode === 0) orderStatusLabel = "Pending";
+        else if (orderStatusCode === 1) orderStatusLabel = "Completed";
+        console.log(`Order ${i + 1}:`);
+        console.log(`- Order ID: ${orderId}`);
+        console.log(`- Order Account: ${orderAccount}`);
+        console.log(`- Order Status: ${orderStatusLabel} (${orderStatusCode})`);
     }
-    
-    // ✅ write back to file
-    fs.writeFileSync(_cratesPath, JSON.stringify(_crates, null, 2), "utf8");
+    bodyObject.totalFeesDeducted = 0;
+    bodyObject.orderIds = orderIds;
+
+    console.log("Body Object:", bodyObject);
+    let res = await axios.post(`${BACKEND_BASE_URL}/transactions`, bodyObject);
+    console.log("Backend Response:", res.data);
     console.log("✅ Updated crates.json");
-    console.log("\n🎉 All done!");    
+    console.log("\n🎉 All done!");
 
 }
 
