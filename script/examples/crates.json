@@ -2,11 +2,11 @@
   {
     "share": "0xD771a71E5bb303da787b4ba2ce559e39dc6eD85c",
     "weightage": 40,
-    "usdtSpend": "46000000",
+    "usdtSpend": "50000000",
     "orderId": "110364476708637015291182252950187499599061266158518214198023664069374334234562",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
-    "minShares": 0.08232930096917657,
+    "minShares": 0.09856641437123842,
     "priceUsed": 226.97,
     "stockId": "0196ea6d-b6de-70d5-ae41-9525959ef309"
   },
@@ -35,22 +35,22 @@
   {
     "share": "0x92d95BCB50B83d488bBFA18776ADC1553d3a8914",
     "weightage": 40,
-    "usdtSpend": "20000000",
+    "usdtSpend": "24000000",
     "orderId": "50167128170914289071813315780888143973869997314507331245050230368625531193073",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
-    "minShares": 0.08263740303457737,
+    "minShares": 0.09895864655789344,
     "priceUsed": 228.75,
     "stockId": "0196ea6d-b6df-7dcb-a1de-d7733e7bcc51"
   },
   {
     "share": "0x3472DEd4C1C6d896D5c8B884164331fd3a3D0a48",
     "weightage": 20,
-    "usdtSpend": "10000000",
+    "usdtSpend": "12000000",
     "orderId": "85116040222147731078583902354247939896889047471332379974720932022860167236757",
     "orderAccount": "0xdAF0182De86F904918Db8d07c7340A1EfcDF8244",
     "status": "Completed",
-    "minShares": 0.0758616027108791,
+    "minShares": 0.091089165450139,
     "priceUsed": 117.98,
     "stockId": "0196ea6d-b6e0-701d-80dd-4b44d4244976"
   }

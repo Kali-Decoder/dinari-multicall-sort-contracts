@@ -21,7 +21,7 @@ async function main() {
     const RPC_URL = process.env.RPC_URL;
     if (!RPC_URL) throw new Error("empty rpc url");
 
-    let orderId = "14198379713137075672674156224619882786703849641554004135427518961232415424874";
+    let orderId = "62817225254367918022578272618669363084889071303396674724708330820388337561168";
     const provider = ethers.getDefaultProvider(RPC_URL);
     const signer = new ethers.Wallet(privateKey, provider);
     console.log(`Signer Address: ${signer.address}`);
@@ -33,13 +33,13 @@ async function main() {
         orderProcessorAbi,
         signer,
     );
-    const orderStatus = await orderProcessor.getUnfilledAmount(orderId);
+    const orderStatus = await orderProcessor.getOrderStatus(orderId);
     console.log(orderStatus.toString());
-    // if (orderStatus == 1) {
-    //     console.log(`- Order Pending : ${orderStatus}`);
-    // } else {
-    //     console.log(`- Order Completed : ${orderStatus}`);
-    // }
+    if (orderStatus == 1) {
+        console.log(`- Order Pending : ${orderStatus}`);
+    } else {
+        console.log(`- Order Completed : ${orderStatus}`);
+    }
 }
 
 

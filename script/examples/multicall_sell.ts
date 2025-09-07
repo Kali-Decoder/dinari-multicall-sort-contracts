@@ -5,7 +5,7 @@ import path from 'path';
 import Dinari from '@dinari/api-sdk';
 import { fileURLToPath } from 'url';
 import axios from "axios";
-const BACKEND_BASE_URL = "https://use-crates.onrender.com/api/v1";
+const BACKEND_BASE_URL = "http://localhost:8080/api/v1";
 const bodyObject = {};
 const executableOrders = [];
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +20,8 @@ const tokenAbi = [
     "function version() external view returns (string memory)",
     "function nonces(address owner) external view returns (uint256)",
     "function balanceOf(address account) external view returns (uint256)",
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function allowance(address owner, address spender) external view returns (uint256)",
 ];
 
 function getTokenAddress(chainId, tokens) {
@@ -68,7 +70,7 @@ async function main() {
         apiSecretKey: process.env.DINARI_API_SECRET_KEY,
         environment: 'sandbox',
     });
-
+    let orderStatus = await dinariClient.v2.accounts.orders.retrieve("62817225254367918022578272618669363084889071303396674724708330820388337561168")
     const provider = ethers.getDefaultProvider(RPC_URL);
     const signer = new ethers.Wallet(privateKey, provider);
     console.log(`Signer Address: ${signer.address}`);
@@ -81,9 +83,6 @@ async function main() {
 
 
     const userData = await axios.get(`${BACKEND_BASE_URL}/user/${signer.address}`);
-  
-
-
     bodyObject.type = "sell";
     bodyObject.wallet = signer.address;
     bodyObject.crateId = "68767c8ea5efff9dcb31f6a5";
@@ -209,7 +208,7 @@ async function main() {
 
         const permitSignatureBytes = await signer._signTypedData(permitDomain, permitTypes, permitMessage);
         const permitSignature = ethers.utils.splitSignature(permitSignatureBytes);
-
+        
         const selfPermitData = orderProcessor.interface.encodeFunctionData("selfPermit", [
             assetTokenAddress,
             permitMessage.owner,
@@ -221,6 +220,13 @@ async function main() {
         ]);
 
         multiCallBytes.push(selfPermitData);
+
+        // const approveData = assetToken.interface.encodeFunctionData("approve", [
+        //     orderProcessorAddress,
+        //     actualAmount
+        // ]);
+        
+        // multiCallBytes.push(approveData);
 
         const requestOrderData = orderProcessor.interface.encodeFunctionData("createOrder", [[
             orderParams.requestTimestamp,
@@ -290,7 +296,7 @@ async function main() {
     bodyObject.totalFeesDeducted = 0;
     bodyObject.orderIds = orderIds;
 
-    console.log("Body Object:", bodyObject);
+    console.log("Body Object:", bodyObject) ;
     let res = await axios.post(`${BACKEND_BASE_URL}/transactions`, bodyObject);
     console.log("Backend Response:", res.data);
     console.log("✅ Updated crates.json");
